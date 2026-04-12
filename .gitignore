@@ -1,0 +1,16 @@
+# Dependencies
+node_modules/
+
+# Build artifacts
+dist/
+build/
+*.zip
+
+# IDE
+.DS_Store
+.vscode/
+.idea/
+
+# Chrome extension
+*.pem
+*.crx
