@@ -3,6 +3,20 @@
 
 // Import Gemini client
 importScripts('../utils/gemini-client.js');
+importScripts('../utils/storage.js');
+
+/**
+ * Get API key from storage
+ * @returns {Promise<string>} API key
+ * @throws {Error} If API key is missing
+ */
+async function getApiKey() {
+  const result = await chrome.storage.sync.get('apiKey');
+  if (!result.apiKey) {
+    throw new Error('API_KEY_MISSING');
+  }
+  return result.apiKey;
+}
 
 // Message handler
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -15,6 +29,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   } else if (message.type === 'VALIDATE_API_KEY') {
     handleValidateApiKey(message, sendResponse);
     return true;
+  } else {
+    sendResponse({ error: 'UNKNOWN_MESSAGE_TYPE' });
+    return false; // Don't keep channel open
   }
 });
 
@@ -24,13 +41,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 async function handleGenerateSummary(message, sendResponse) {
   try {
     // Get API key
-    const result = await chrome.storage.sync.get('apiKey');
-    const apiKey = result.apiKey;
-
-    if (!apiKey) {
-      sendResponse({ error: 'API_KEY_MISSING' });
-      return;
-    }
+    const apiKey = await getApiKey();
 
     // Generate summary
     let summary;
@@ -55,14 +66,14 @@ async function handleGenerateSummary(message, sendResponse) {
  */
 async function handleAnswerQuestion(message, sendResponse) {
   try {
-    // Get API key
-    const result = await chrome.storage.sync.get('apiKey');
-    const apiKey = result.apiKey;
-
-    if (!apiKey) {
-      sendResponse({ error: 'API_KEY_MISSING' });
+    // Validate required fields
+    if (!message.transcript || !message.question) {
+      sendResponse({ error: 'MISSING_REQUIRED_FIELDS' });
       return;
     }
+
+    // Get API key
+    const apiKey = await getApiKey();
 
     // Answer question
     const answer = await GeminiClient.answerQuestion(
@@ -84,6 +95,12 @@ async function handleAnswerQuestion(message, sendResponse) {
  */
 async function handleValidateApiKey(message, sendResponse) {
   try {
+    // Validate required fields
+    if (!message.apiKey) {
+      sendResponse({ error: 'MISSING_REQUIRED_FIELDS' });
+      return;
+    }
+
     // Test API key with minimal request
     const testPrompt = 'Say "OK" if you can read this.';
     const requestBody = {
