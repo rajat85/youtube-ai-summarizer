@@ -171,7 +171,7 @@ class YouTubeSummarizer {
       this.transcript = await CaptionExtractor.extract(this.currentVideoId);
 
       let summary;
-      let hasCapions = !!this.transcript;
+      let hasCaptions = !!this.transcript;
 
       // Generate summary
       if (this.transcript) {
@@ -186,7 +186,7 @@ class YouTubeSummarizer {
       // Cache the summary
       await StorageManager.setSummary(this.currentVideoId, summary, {
         videoTitle: document.title,
-        hasCapions
+        hasCaptions
       });
 
       // Display
@@ -212,6 +212,17 @@ class YouTubeSummarizer {
           transcript: transcript
         },
         response => {
+          // Check for Chrome runtime errors
+          if (chrome.runtime.lastError) {
+            reject(new Error(chrome.runtime.lastError.message));
+            return;
+          }
+          // Check for undefined response
+          if (!response) {
+            reject(new Error('No response from background script'));
+            return;
+          }
+          // Existing error/success handling
           if (response.error) {
             reject(new Error(response.error));
           } else {
@@ -236,6 +247,17 @@ class YouTubeSummarizer {
           metadata: metadata
         },
         response => {
+          // Check for Chrome runtime errors
+          if (chrome.runtime.lastError) {
+            reject(new Error(chrome.runtime.lastError.message));
+            return;
+          }
+          // Check for undefined response
+          if (!response) {
+            reject(new Error('No response from background script'));
+            return;
+          }
+          // Existing error/success handling
           if (response.error) {
             reject(new Error(response.error));
           } else {
