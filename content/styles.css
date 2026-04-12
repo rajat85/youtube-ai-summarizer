@@ -60,7 +60,7 @@
 }
 
 /* Sidebar Header */
-.yt-ai-header {
+.sidebar-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -69,14 +69,14 @@
   background-color: var(--yt-spec-base-background, #ffffff);
 }
 
-.yt-ai-header h3 {
+.sidebar-header h3 {
   margin: 0;
   font-size: 16px;
   font-weight: 500;
   color: var(--yt-spec-text-primary, #0f0f0f);
 }
 
-.yt-ai-close-btn {
+.close-btn {
   background: none;
   border: none;
   cursor: pointer;
@@ -88,43 +88,43 @@
   transition: background-color 0.2s ease;
 }
 
-.yt-ai-close-btn:hover {
+.close-btn:hover {
   background-color: var(--yt-spec-badge-chip-background, #f2f2f2);
 }
 
-.yt-ai-close-btn svg {
+.close-btn svg {
   width: 24px;
   height: 24px;
   fill: var(--yt-spec-text-primary, #0f0f0f);
 }
 
 /* Sidebar Content */
-.yt-ai-content {
+.sidebar-content {
   flex: 1;
   overflow-y: auto;
   padding: 16px;
   background-color: var(--yt-spec-base-background, #ffffff);
 }
 
-.yt-ai-content::-webkit-scrollbar {
+.sidebar-content::-webkit-scrollbar {
   width: 8px;
 }
 
-.yt-ai-content::-webkit-scrollbar-track {
+.sidebar-content::-webkit-scrollbar-track {
   background: var(--yt-spec-10-percent-layer, #f1f1f1);
 }
 
-.yt-ai-content::-webkit-scrollbar-thumb {
+.sidebar-content::-webkit-scrollbar-thumb {
   background: var(--yt-spec-text-secondary, #909090);
   border-radius: 4px;
 }
 
-.yt-ai-content::-webkit-scrollbar-thumb:hover {
+.sidebar-content::-webkit-scrollbar-thumb:hover {
   background: var(--yt-spec-text-primary, #606060);
 }
 
 /* Loading State */
-.yt-ai-loading {
+.loading {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -132,16 +132,25 @@
   padding: 40px 20px;
 }
 
-.yt-ai-spinner {
+.spinner {
   width: 40px;
   height: 40px;
   border: 4px solid var(--yt-spec-10-percent-layer, #f1f1f1);
   border-top: 4px solid #065fd4;
   border-radius: 50%;
-  animation: yt-ai-spin 1s linear infinite;
+  animation: spin 1s linear infinite;
 }
 
-@keyframes yt-ai-spin {
+.spinner-small {
+  width: 20px;
+  height: 20px;
+  border: 3px solid var(--yt-spec-10-percent-layer, #f1f1f1);
+  border-top: 3px solid #065fd4;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
   0% {
     transform: rotate(0deg);
   }
@@ -150,18 +159,18 @@
   }
 }
 
-.yt-ai-loading p {
+.loading p {
   margin-top: 16px;
   color: var(--yt-spec-text-secondary, #606060);
   font-size: 14px;
 }
 
 /* Summary Display */
-.yt-ai-summary {
-  animation: yt-ai-fade-in 0.3s ease-in;
+.summary {
+  animation: fade-in 0.3s ease-in;
 }
 
-@keyframes yt-ai-fade-in {
+@keyframes fade-in {
   from {
     opacity: 0;
     transform: translateY(10px);
@@ -172,7 +181,7 @@
   }
 }
 
-.yt-ai-summary-header {
+.summary-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -181,7 +190,7 @@
   border-bottom: 1px solid var(--yt-spec-10-percent-layer, #e5e5e5);
 }
 
-.yt-ai-summary-header h4 {
+.summary-header h4 {
   margin: 0;
   font-size: 14px;
   font-weight: 500;
@@ -213,8 +222,7 @@
   border-color: var(--yt-spec-text-secondary, #606060);
 }
 
-.yt-ai-copy-btn,
-.yt-ai-chat-btn {
+.settings-btn {
   background: none;
   border: 1px solid var(--yt-spec-10-percent-layer, #e5e5e5);
   border-radius: 18px;
@@ -228,46 +236,45 @@
   gap: 4px;
 }
 
-.yt-ai-copy-btn:hover,
-.yt-ai-chat-btn:hover {
+.settings-btn:hover {
   background-color: var(--yt-spec-badge-chip-background, #f2f2f2);
 }
 
-.yt-ai-summary-content {
+.summary-content {
   color: var(--yt-spec-text-primary, #0f0f0f);
   font-size: 14px;
   line-height: 1.6;
 }
 
-.yt-ai-summary-content h4 {
+.summary-content h4 {
   margin: 16px 0 8px 0;
   font-size: 14px;
   font-weight: 500;
   color: var(--yt-spec-text-primary, #0f0f0f);
 }
 
-.yt-ai-summary-content p {
+.summary-content p {
   margin: 8px 0;
   color: var(--yt-spec-text-secondary, #606060);
 }
 
-.yt-ai-summary-content ul,
-.yt-ai-summary-content ol {
+.summary-content ul,
+.summary-content ol {
   margin: 8px 0;
   padding-left: 24px;
 }
 
-.yt-ai-summary-content li {
+.summary-content li {
   margin: 4px 0;
   color: var(--yt-spec-text-secondary, #606060);
 }
 
-.yt-ai-summary-content strong {
+.summary-content strong {
   font-weight: 500;
   color: var(--yt-spec-text-primary, #0f0f0f);
 }
 
-.yt-ai-summary-content em {
+.summary-content em {
   font-style: italic;
 }
 
@@ -287,46 +294,46 @@
   gap: 12px;
 }
 
-.yt-ai-chat-message {
+.chat-message {
   display: flex;
   flex-direction: column;
   max-width: 85%;
-  animation: yt-ai-fade-in 0.3s ease-in;
+  animation: fade-in 0.3s ease-in;
 }
 
-.yt-ai-chat-message.user {
+.chat-message.user {
   align-self: flex-end;
 }
 
-.yt-ai-chat-message.assistant {
+.chat-message.assistant {
   align-self: flex-start;
 }
 
-.yt-ai-chat-message.system {
+.chat-message.system {
   align-self: center;
   max-width: 95%;
 }
 
-.yt-ai-chat-message-label {
+.chat-message-label {
   font-size: 12px;
   font-weight: 500;
   margin-bottom: 4px;
   color: var(--yt-spec-text-secondary, #606060);
 }
 
-.yt-ai-chat-message.user .yt-ai-chat-message-label {
+.chat-message.user .chat-message-label {
   text-align: right;
 }
 
-.yt-ai-chat-message.assistant .yt-ai-chat-message-label {
+.chat-message.assistant .chat-message-label {
   text-align: left;
 }
 
-.yt-ai-chat-message.system .yt-ai-chat-message-label {
+.chat-message.system .chat-message-label {
   text-align: center;
 }
 
-.yt-ai-chat-message-content {
+.message-content {
   padding: 10px 14px;
   border-radius: 12px;
   font-size: 14px;
@@ -334,19 +341,19 @@
   word-wrap: break-word;
 }
 
-.yt-ai-chat-message.user .yt-ai-chat-message-content {
+.chat-message.user .message-content {
   background-color: #065fd4;
   color: white;
   border-bottom-right-radius: 4px;
 }
 
-.yt-ai-chat-message.assistant .yt-ai-chat-message-content {
+.chat-message.assistant .message-content {
   background-color: var(--yt-spec-badge-chip-background, #f2f2f2);
   color: var(--yt-spec-text-primary, #0f0f0f);
   border-bottom-left-radius: 4px;
 }
 
-.yt-ai-chat-message.system .yt-ai-chat-message-content {
+.chat-message.system .message-content {
   background-color: #fff4e5;
   color: #8b5a00;
   border-radius: 8px;
@@ -354,7 +361,7 @@
   font-size: 13px;
 }
 
-.yt-ai-chat-message.system.error .yt-ai-chat-message-content {
+.chat-message.system.error .message-content {
   background-color: #fce8e6;
   color: #c5221f;
 }
@@ -406,7 +413,7 @@
 }
 
 /* Error State */
-.yt-ai-error {
+.error {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -415,21 +422,21 @@
   text-align: center;
 }
 
-.yt-ai-error-icon {
+.error-icon {
   width: 48px;
   height: 48px;
   margin-bottom: 16px;
   fill: #c5221f;
 }
 
-.yt-ai-error p {
+.error p {
   margin: 0 0 16px 0;
   color: var(--yt-spec-text-primary, #0f0f0f);
   font-size: 14px;
   line-height: 1.5;
 }
 
-.yt-ai-retry-btn {
+.retry-btn {
   background-color: #065fd4;
   color: white;
   border: none;
@@ -441,16 +448,16 @@
   transition: background-color 0.2s ease;
 }
 
-.yt-ai-retry-btn:hover {
+.retry-btn:hover {
   background-color: #0657c4;
 }
 
-.yt-ai-retry-btn:active {
+.retry-btn:active {
   background-color: #054fa3;
 }
 
 /* Sidebar Footer (Chat Input) */
-.yt-ai-footer {
+.sidebar-footer {
   padding: 12px 16px;
   border-top: 1px solid var(--yt-spec-10-percent-layer, #e5e5e5);
   background-color: var(--yt-spec-base-background, #ffffff);
@@ -459,7 +466,7 @@
   align-items: flex-end;
 }
 
-.yt-ai-chat-input {
+#chat-input {
   flex: 1;
   border: 1px solid var(--yt-spec-10-percent-layer, #cccccc);
   border-radius: 20px;
@@ -475,16 +482,16 @@
   transition: border-color 0.2s ease;
 }
 
-.yt-ai-chat-input:focus {
+#chat-input:focus {
   outline: none;
   border-color: #065fd4;
 }
 
-.yt-ai-chat-input::placeholder {
+#chat-input::placeholder {
   color: var(--yt-spec-text-secondary, #909090);
 }
 
-.yt-ai-send-btn {
+#send-btn {
   background-color: #065fd4;
   color: white;
   border: none;
@@ -499,21 +506,21 @@
   flex-shrink: 0;
 }
 
-.yt-ai-send-btn:hover {
+#send-btn:hover {
   background-color: #0657c4;
 }
 
-.yt-ai-send-btn:active {
+#send-btn:active {
   background-color: #054fa3;
 }
 
-.yt-ai-send-btn:disabled {
+#send-btn:disabled {
   background-color: var(--yt-spec-badge-chip-background, #cccccc);
   cursor: not-allowed;
   opacity: 0.6;
 }
 
-.yt-ai-send-btn svg {
+#send-btn svg {
   width: 20px;
   height: 20px;
   fill: currentColor;
@@ -533,7 +540,7 @@
     right: -100%;
   }
 
-  .yt-ai-chat-message {
+  .chat-message {
     max-width: 90%;
   }
 }
@@ -544,12 +551,12 @@
 
 /* Additional dark mode specific adjustments if needed */
 @media (prefers-color-scheme: dark) {
-  .yt-ai-chat-message.system .yt-ai-chat-message-content {
+  .chat-message.system .message-content {
     background-color: #3a3a2a;
     color: #ffb74d;
   }
 
-  .yt-ai-chat-message.system.error .yt-ai-chat-message-content {
+  .chat-message.system.error .message-content {
     background-color: #3a2a2a;
     color: #ff8a80;
   }
