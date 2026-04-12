@@ -32,6 +32,9 @@ class StorageManager {
         return null;
       }
 
+      // Track cache hit
+      await this.updateStats('hit');
+
       return cached;
     } catch (error) {
       console.error('Error getting summary:', error);
@@ -50,22 +53,29 @@ class StorageManager {
       const result = await chrome.storage.local.get(this.SUMMARIES_KEY);
       const summaries = result[this.SUMMARIES_KEY] || {};
 
-      // Check storage size
-      const estimatedSize = JSON.stringify(summaries).length;
-      if (estimatedSize > this.MAX_SIZE_BYTES) {
-        await this.cleanup();
-      }
-
       summaries[videoId] = {
         summary,
         timestamp: Date.now(),
         ...metadata
       };
 
-      await chrome.storage.local.set({ [this.SUMMARIES_KEY]: summaries });
+      // Check storage size after adding new entry
+      const estimatedSize = new Blob([JSON.stringify(summaries)]).size;
+      if (estimatedSize > this.MAX_SIZE_BYTES) {
+        await this.cleanup();
+        // Re-get summaries after cleanup
+        const cleanedResult = await chrome.storage.local.get(this.SUMMARIES_KEY);
+        const cleanedSummaries = cleanedResult[this.SUMMARIES_KEY] || {};
+        cleanedSummaries[videoId] = summaries[videoId];
+        await chrome.storage.local.set({ [this.SUMMARIES_KEY]: cleanedSummaries });
+      } else {
+        await chrome.storage.local.set({ [this.SUMMARIES_KEY]: summaries });
+      }
+
       await this.updateStats('set');
     } catch (error) {
       console.error('Error setting summary:', error);
+      throw error;
     }
   }
 
@@ -98,12 +108,23 @@ class StorageManager {
       // Sort by timestamp (oldest first)
       entries.sort((a, b) => a[1].timestamp - b[1].timestamp);
 
-      // Remove oldest 20%
-      const toRemove = Math.floor(entries.length * this.CLEANUP_PERCENTAGE);
+      // Remove oldest 20% (minimum 1 if entries exist)
+      const toRemove = Math.max(1, Math.floor(entries.length * this.CLEANUP_PERCENTAGE));
       const toKeep = entries.slice(toRemove);
 
       const cleanedSummaries = Object.fromEntries(toKeep);
       await chrome.storage.local.set({ [this.SUMMARIES_KEY]: cleanedSummaries });
+
+      // Update stats with cleanup timestamp
+      const statsResult = await chrome.storage.local.get(this.STATS_KEY);
+      const stats = statsResult[this.STATS_KEY] || {
+        totalSummaries: 0,
+        cacheHits: 0,
+        apiCalls: 0,
+        lastCleanup: Date.now()
+      };
+      stats.lastCleanup = Date.now();
+      await chrome.storage.local.set({ [this.STATS_KEY]: stats });
 
       console.log(`Cleaned up ${toRemove} old summaries`);
     } catch (error) {
@@ -117,7 +138,14 @@ class StorageManager {
   static async clearAll() {
     try {
       await chrome.storage.local.remove(this.SUMMARIES_KEY);
-      await chrome.storage.local.remove(this.STATS_KEY);
+      // Reset stats instead of removing
+      const resetStats = {
+        totalSummaries: 0,
+        cacheHits: 0,
+        apiCalls: 0,
+        lastCleanup: Date.now()
+      };
+      await chrome.storage.local.set({ [this.STATS_KEY]: resetStats });
     } catch (error) {
       console.error('Error clearing cache:', error);
     }
@@ -142,6 +170,11 @@ class StorageManager {
    * @param {string} apiKey
    */
   static async setApiKey(apiKey) {
+    // Validate non-empty string
+    if (!apiKey || typeof apiKey !== 'string' || apiKey.trim() === '') {
+      throw new Error('API key must be a non-empty string');
+    }
+
     try {
       await chrome.storage.sync.set({ [this.API_KEY]: apiKey });
     } catch (error) {
