@@ -109,22 +109,45 @@ class YouTubeSummarizer {
     // Wait for video metadata section
     const container = await this.waitForElement('#above-the-fold, #top-row');
 
-    // Create button
-    this.button = document.createElement('button');
-    this.button.id = 'yt-ai-summarize-btn';
-    this.button.className = 'yt-ai-button';
-    this.button.innerHTML = '✨ Summarize';
+    // Function to create and inject button
+    const createAndInjectButton = () => {
+      // Check if button already exists
+      if (document.getElementById('yt-ai-summarize-btn')) {
+        return;
+      }
 
-    // Add click handler
-    this.button.addEventListener('click', () => this.handleSummarize());
+      // Create button
+      this.button = document.createElement('button');
+      this.button.id = 'yt-ai-summarize-btn';
+      this.button.className = 'yt-ai-button';
+      this.button.innerHTML = '✨ Summarize';
 
-    // Find good insertion point
-    const actionsRow = container.querySelector('#top-level-buttons-computed, #menu-container');
-    if (actionsRow) {
-      actionsRow.insertAdjacentElement('afterend', this.button);
-    } else {
-      container.appendChild(this.button);
-    }
+      // Add click handler
+      this.button.addEventListener('click', () => this.handleSummarize());
+
+      // Find good insertion point
+      const actionsRow = container.querySelector('#top-level-buttons-computed, #menu-container');
+      if (actionsRow) {
+        actionsRow.insertAdjacentElement('afterend', this.button);
+      } else {
+        container.appendChild(this.button);
+      }
+    };
+
+    // Initial injection
+    createAndInjectButton();
+
+    // Watch for YouTube's dynamic updates that might remove the button
+    const observer = new MutationObserver(() => {
+      if (!document.getElementById('yt-ai-summarize-btn')) {
+        createAndInjectButton();
+      }
+    });
+
+    observer.observe(container, {
+      childList: true,
+      subtree: true
+    });
   }
 
   /**
