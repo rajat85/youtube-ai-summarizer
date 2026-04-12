@@ -2,7 +2,7 @@
 // Wrapper for Gemini API calls
 
 class GeminiClient {
-  static API_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent';
+  static API_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
   static MAX_RETRIES = 3;
 
   static SUMMARY_PROMPT_TEMPLATE = `You are an expert at summarizing YouTube videos. Analyze the following video transcript and create a structured summary.
