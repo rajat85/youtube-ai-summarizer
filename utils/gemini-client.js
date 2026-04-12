@@ -186,9 +186,13 @@ Provide a brief summary of what this video is likely about. Format as:
 
         // Validate response structure with defensive checks
         const candidate = data.candidates?.[0];
+        console.log('Candidate structure:', JSON.stringify(candidate, null, 2));
+
         const text = candidate?.content?.parts?.[0]?.text;
         if (!text) {
-          console.error('Invalid response structure. Candidate:', candidate);
+          console.error('Invalid response structure. Full candidate:', JSON.stringify(candidate, null, 2));
+          console.error('Content:', candidate?.content);
+          console.error('Parts:', candidate?.content?.parts);
           throw new Error('Invalid API response structure');
         }
 
