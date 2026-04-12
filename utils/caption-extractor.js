@@ -28,7 +28,7 @@ class CaptionExtractor {
   static async extractFromPlayerResponse() {
     try {
       // YouTube embeds player data in page
-      if (typeof window.ytInitialPlayerResponse === 'undefined') {
+      if (typeof window === 'undefined' || typeof window.ytInitialPlayerResponse === 'undefined' || !window.ytInitialPlayerResponse) {
         return null;
       }
 
@@ -53,6 +53,7 @@ class CaptionExtractor {
 
       // Fetch caption data
       const response = await fetch(englishTrack.baseUrl);
+      if (!response.ok) return null;
       const xmlText = await response.text();
 
       return this.parseXml(xmlText);
@@ -90,6 +91,14 @@ class CaptionExtractor {
   static parseXml(xmlText) {
     const parser = new DOMParser();
     const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
+
+    // Check for parse errors
+    const parseError = xmlDoc.getElementsByTagName('parsererror');
+    if (parseError.length > 0) {
+      console.error('XML parsing error:', parseError[0].textContent);
+      return '';
+    }
+
     const textElements = xmlDoc.getElementsByTagName('text');
 
     const transcript = Array.from(textElements)
@@ -109,7 +118,7 @@ class CaptionExtractor {
 
     const transcript = data.events
       .filter(event => event.segs)
-      .map(event => event.segs.map(seg => seg.utf8).join(''))
+      .map(event => event.segs.map(seg => seg?.utf8 || '').filter(Boolean).join(''))
       .join(' ');
 
     return this.cleanTranscript(transcript);
