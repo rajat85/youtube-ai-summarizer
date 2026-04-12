@@ -306,6 +306,7 @@ class YouTubeSummarizer {
    * Setup chat input handlers
    */
   setupChatHandlers() {
+    if (!this.sidebar) return;
     const input = this.sidebar.querySelector('#chat-input');
     const sendBtn = this.sidebar.querySelector('#send-btn');
 
@@ -332,6 +333,7 @@ class YouTubeSummarizer {
    * Show loading spinner
    */
   showLoading() {
+    if (!this.sidebar) return;
     const container = this.sidebar.querySelector('#summary-container');
     container.innerHTML = `
       <div class="loading">
@@ -347,6 +349,7 @@ class YouTubeSummarizer {
    * @param {boolean} cached - Whether this is from cache
    */
   displaySummary(summary, cached = false) {
+    if (!this.sidebar) return;
     const container = this.sidebar.querySelector('#summary-container');
 
     const cachedBadge = cached ? '<span class="cached-badge">📦 From Cache</span>' : '';
@@ -363,10 +366,15 @@ class YouTubeSummarizer {
 
     // Add regenerate handler
     container.querySelector('.regenerate-btn').addEventListener('click', async () => {
-      // Clear cache for this video
-      await StorageManager.clearSummary(this.currentVideoId);
-      // Regenerate
-      this.handleSummarize();
+      try {
+        // Clear cache for this video
+        await StorageManager.clearSummary(this.currentVideoId);
+        // Regenerate
+        this.handleSummarize();
+      } catch (error) {
+        console.error('Failed to clear cache:', error);
+        this.showMessage('Failed to clear cache', 'error');
+      }
     });
   }
 
@@ -376,6 +384,14 @@ class YouTubeSummarizer {
    * @returns {string} HTML formatted text
    */
   formatSummary(text) {
+    // Escape HTML entities to prevent XSS
+    text = text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+
     // Convert **bold** to <strong>
     text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
 
@@ -427,7 +443,9 @@ class YouTubeSummarizer {
       const answer = await this.requestAnswer(question);
 
       // Remove loading message
-      loadingMsg.remove();
+      if (loadingMsg && loadingMsg.parentNode) {
+        loadingMsg.remove();
+      }
 
       // Add assistant response
       this.addChatMessage(answer, 'assistant');
@@ -445,7 +463,9 @@ class YouTubeSummarizer {
 
     } catch (error) {
       // Remove loading message
-      loadingMsg.remove();
+      if (loadingMsg && loadingMsg.parentNode) {
+        loadingMsg.remove();
+      }
 
       console.error('Error in handleQuestion:', error);
       this.addChatMessage('❌ Failed to get answer. Please try again.', 'assistant');
@@ -497,6 +517,7 @@ class YouTubeSummarizer {
    * @returns {HTMLElement} The message element
    */
   addChatMessage(text, role, loading = false) {
+    if (!this.sidebar) return;
     const chatContainer = this.sidebar.querySelector('#chat-container');
 
     const messageDiv = document.createElement('div');
@@ -530,6 +551,7 @@ class YouTubeSummarizer {
    * @param {Error} error - Error object
    */
   showError(error) {
+    if (!this.sidebar) return;
     const container = this.sidebar.querySelector('#summary-container');
 
     let errorMessage = '❌ An error occurred';
@@ -596,6 +618,7 @@ class YouTubeSummarizer {
    * @param {string} type - 'info', 'error', 'success'
    */
   showMessage(text, type = 'info') {
+    if (!this.sidebar) return;
     const chatContainer = this.sidebar.querySelector('#chat-container');
 
     const messageDiv = document.createElement('div');
