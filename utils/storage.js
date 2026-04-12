@@ -242,3 +242,8 @@ class StorageManager {
 if (typeof window !== 'undefined') {
   window.StorageManager = StorageManager;
 }
+
+// Export for service worker
+if (typeof self !== 'undefined' && self.StorageManager === undefined) {
+  self.StorageManager = StorageManager;
+}

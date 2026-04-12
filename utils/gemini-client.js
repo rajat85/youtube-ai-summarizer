@@ -3,6 +3,7 @@
 
 class GeminiClient {
   static API_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent';
+  static MAX_RETRIES = 3;
 
   static SUMMARY_PROMPT_TEMPLATE = `You are an expert at summarizing YouTube videos. Analyze the following video transcript and create a structured summary.
 
@@ -144,7 +145,7 @@ Provide a brief summary of what this video is likely about. Format as:
    * @param {number} retries - Number of retries
    * @returns {Promise<string>} Response text
    */
-  static async callAPI(apiKey, requestBody, retries = 3) {
+  static async callAPI(apiKey, requestBody, retries = GeminiClient.MAX_RETRIES) {
     for (let attempt = 0; attempt < retries; attempt++) {
       try {
         const response = await fetch(`${this.API_ENDPOINT}?key=${apiKey}`, {
@@ -164,7 +165,7 @@ Provide a brief summary of what this video is likely about. Format as:
           } else if (response.status === 401 || response.status === 403) {
             throw new Error('INVALID_API_KEY');
           } else {
-            throw new Error(`API_ERROR: ${response.status} ${response.statusText}`);
+            throw new Error(`API_ERROR: ${response.status} ${errorData?.error?.message || response.statusText}`);
           }
         }
 
@@ -174,7 +175,28 @@ Provide a brief summary of what this video is likely about. Format as:
           throw new Error('No response from API');
         }
 
-        return data.candidates[0].content.parts[0].text;
+        // Check for content safety filter
+        if (data.candidates?.[0]?.finishReason === 'SAFETY') {
+          throw new Error('CONTENT_FILTERED');
+        }
+
+        // Validate response structure with defensive checks
+        const candidate = data.candidates?.[0];
+        const text = candidate?.content?.parts?.[0]?.text;
+        if (!text) {
+          throw new Error('Invalid API response structure');
+        }
+
+        // Track API call stats
+        try {
+          if (typeof StorageManager !== 'undefined') {
+            await StorageManager.updateStats('api_call');
+          }
+        } catch (statsError) {
+          console.warn('Failed to update stats:', statsError);
+        }
+
+        return text;
       } catch (error) {
         // Don't retry on quota or auth errors
         if (error.message === 'QUOTA_EXCEEDED' || error.message === 'INVALID_API_KEY') {
