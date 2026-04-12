@@ -1,0 +1,14 @@
+[
+  {"text": "Task 1: Project Setup & Basic Structure", "status": "completed"},
+  {"text": "Task 2: Storage Utilities", "status": "completed"},
+  {"text": "Task 3: Caption Extractor", "status": "completed"},
+  {"text": "Task 4: Gemini API Client", "status": "completed"},
+  {"text": "Task 5: Service Worker", "status": "completed"},
+  {"text": "Task 6: Content Script - Core Logic", "status": "completed"},
+  {"text": "Task 7: Content Script - UI Methods", "status": "completed"},
+  {"text": "Task 8: Content Script Styles", "status": "completed"},
+  {"text": "Task 9: Popup Settings UI", "status": "completed"},
+  {"text": "Task 10: Icons (Optional - extension works without)", "status": "pending"},
+  {"text": "Task 11: Testing & Manual Verification", "status": "pending"},
+  {"text": "Task 12: Documentation & Packaging", "status": "pending"}
+]
