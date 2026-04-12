@@ -171,7 +171,11 @@ Provide a brief summary of what this video is likely about. Format as:
 
         const data = await response.json();
 
+        // Log response for debugging
+        console.log('Gemini API response:', JSON.stringify(data, null, 2));
+
         if (!data.candidates || data.candidates.length === 0) {
+          console.error('No candidates in response:', data);
           throw new Error('No response from API');
         }
 
@@ -184,6 +188,7 @@ Provide a brief summary of what this video is likely about. Format as:
         const candidate = data.candidates?.[0];
         const text = candidate?.content?.parts?.[0]?.text;
         if (!text) {
+          console.error('Invalid response structure. Candidate:', candidate);
           throw new Error('Invalid API response structure');
         }
 
