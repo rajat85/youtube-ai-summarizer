@@ -403,7 +403,7 @@ class YouTubeSummarizer {
     container.querySelector('.regenerate-btn').addEventListener('click', async () => {
       try {
         // Clear cache for this video
-        await StorageManager.clearSummary(this.currentVideoId);
+        await StorageManager.removeSummary(this.currentVideoId);
         // Regenerate
         this.handleSummarize();
       } catch (error) {
