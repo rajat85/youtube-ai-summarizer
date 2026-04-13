@@ -3,6 +3,25 @@
 
 class CaptionExtractor {
   /**
+   * Wait for ytInitialPlayerResponse to be available
+   * @param {number} timeout - Max wait time in ms
+   * @returns {Promise<boolean>}
+   */
+  static async waitForPlayerResponse(timeout = 5000) {
+    const startTime = Date.now();
+    while (Date.now() - startTime < timeout) {
+      if (window.ytInitialPlayerResponse && 
+          window.ytInitialPlayerResponse.videoDetails) {
+        console.log('[CaptionExtractor] ytInitialPlayerResponse is now available');
+        return true;
+      }
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    console.log('[CaptionExtractor] Timeout waiting for ytInitialPlayerResponse');
+    return false;
+  }
+
+  /**
    * Extract captions for a video
    * @param {string} videoId - YouTube video ID
    * @returns {Promise<string|null>} Transcript text or null
@@ -10,6 +29,9 @@ class CaptionExtractor {
   static async extract(videoId) {
     try {
       console.log('[CaptionExtractor] Starting extraction for video:', videoId);
+      
+      // Wait for ytInitialPlayerResponse to be available
+      await this.waitForPlayerResponse();
       
       // Method 1: Try ytInitialPlayerResponse
       const transcript = await this.extractFromPlayerResponse();
