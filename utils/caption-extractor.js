@@ -153,14 +153,17 @@ class CaptionExtractor {
       }
 
       console.log('[CaptionExtractor] Using track:', englishTrack.languageCode, englishTrack.kind || 'manual');
+      console.log('[CaptionExtractor] Fetching from URL:', englishTrack.baseUrl);
 
       // Fetch caption data
       const response = await fetch(englishTrack.baseUrl);
+      console.log('[CaptionExtractor] Fetch response status:', response.status, response.statusText);
       if (!response.ok) {
         console.log('[CaptionExtractor] Failed to fetch captions, status:', response.status);
         return null;
       }
       const xmlText = await response.text();
+      console.log('[CaptionExtractor] Response text length:', xmlText.length, 'First 200 chars:', xmlText.substring(0, 200));
 
       return this.parseXml(xmlText);
     } catch (error) {
