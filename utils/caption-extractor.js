@@ -12,22 +12,33 @@ class CaptionExtractor {
     let lastCheck = 'Not started';
     
     while (Date.now() - startTime < timeout) {
-      // Check if ytInitialPlayerResponse exists
-      if (!window.ytInitialPlayerResponse) {
-        lastCheck = 'ytInitialPlayerResponse does not exist';
+      // Check if ytInitialPlayerResponse exists in page scripts
+      const scripts = Array.from(document.querySelectorAll('script'));
+      const hasPlayerResponse = scripts.some(s => (s.textContent || '').includes('var ytInitialPlayerResponse'));
+      
+      if (!hasPlayerResponse) {
+        lastCheck = 'ytInitialPlayerResponse does not exist in page scripts';
         await new Promise(resolve => setTimeout(resolve, 200));
         continue;
       }
       
-      // Check if it has videoDetails
-      if (!window.ytInitialPlayerResponse.videoDetails) {
-        lastCheck = 'No videoDetails';
-        await new Promise(resolve => setTimeout(resolve, 200));
-        continue;
+      // Try to parse it to check for captions
+      let hasCaptions = false;
+      for (const script of scripts) {
+        const content = script.textContent || '';
+        if (content.includes('var ytInitialPlayerResponse')) {
+          try {
+            const match = content.match(/var ytInitialPlayerResponse\s*=\s*({.+?});/s);
+            if (match && match[1]) {
+              const data = JSON.parse(match[1]);
+              hasCaptions = data?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
+              break;
+            }
+          } catch (e) {
+            continue;
+          }
+        }
       }
-      
-      // Check if it has captions data
-      const hasCaptions = window.ytInitialPlayerResponse?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
       if (hasCaptions && hasCaptions.length > 0) {
         console.log('[CaptionExtractor] ytInitialPlayerResponse is ready with captions');
         return true;
@@ -38,11 +49,12 @@ class CaptionExtractor {
     }
     
     console.log('[CaptionExtractor] Timeout waiting for ytInitialPlayerResponse. Last check:', lastCheck);
+    const scripts = Array.from(document.querySelectorAll('script'));
+    const scriptWithData = scripts.find(s => (s.textContent || '').includes('var ytInitialPlayerResponse'));
     console.log('[CaptionExtractor] Current state:', {
-      exists: !!window.ytInitialPlayerResponse,
-      hasVideoDetails: !!window.ytInitialPlayerResponse?.videoDetails,
-      hasCaptionsObject: !!window.ytInitialPlayerResponse?.captions,
-      hasCaptionTracks: !!window.ytInitialPlayerResponse?.captions?.playerCaptionsTracklistRenderer?.captionTracks
+      scriptsChecked: scripts.length,
+      foundInScripts: !!scriptWithData,
+      lastCheckStatus: lastCheck
     });
     return false;
   }
@@ -88,13 +100,35 @@ class CaptionExtractor {
    */
   static async extractFromPlayerResponse() {
     try {
-      // YouTube embeds player data in page
-      if (typeof window === 'undefined' || typeof window.ytInitialPlayerResponse === 'undefined' || !window.ytInitialPlayerResponse) {
-        console.log('[CaptionExtractor] ytInitialPlayerResponse not available');
+      // Content scripts can't access page variables directly
+      // Need to extract from script tags in the page
+      let playerResponse = null;
+      
+      // Try to get from script tags
+      const scripts = document.querySelectorAll('script');
+      for (const script of scripts) {
+        const content = script.textContent || '';
+        
+        // Look for ytInitialPlayerResponse in script content
+        if (content.includes('var ytInitialPlayerResponse =')) {
+          try {
+            // Extract the JSON object
+            const match = content.match(/var ytInitialPlayerResponse\s*=\s*({.+?});/s);
+            if (match && match[1]) {
+              playerResponse = JSON.parse(match[1]);
+              console.log('[CaptionExtractor] Extracted ytInitialPlayerResponse from script tag');
+              break;
+            }
+          } catch (e) {
+            continue;
+          }
+        }
+      }
+      
+      if (!playerResponse) {
+        console.log('[CaptionExtractor] ytInitialPlayerResponse not found in page scripts');
         return null;
       }
-
-      const playerResponse = window.ytInitialPlayerResponse;
       const captionTracks = playerResponse?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
 
       if (!captionTracks || captionTracks.length === 0) {
