@@ -7,17 +7,43 @@ class CaptionExtractor {
    * @param {number} timeout - Max wait time in ms
    * @returns {Promise<boolean>}
    */
-  static async waitForPlayerResponse(timeout = 5000) {
+  static async waitForPlayerResponse(timeout = 10000) {
     const startTime = Date.now();
+    let lastCheck = 'Not started';
+    
     while (Date.now() - startTime < timeout) {
-      if (window.ytInitialPlayerResponse && 
-          window.ytInitialPlayerResponse.videoDetails) {
-        console.log('[CaptionExtractor] ytInitialPlayerResponse is now available');
+      // Check if ytInitialPlayerResponse exists
+      if (!window.ytInitialPlayerResponse) {
+        lastCheck = 'ytInitialPlayerResponse does not exist';
+        await new Promise(resolve => setTimeout(resolve, 200));
+        continue;
+      }
+      
+      // Check if it has videoDetails
+      if (!window.ytInitialPlayerResponse.videoDetails) {
+        lastCheck = 'No videoDetails';
+        await new Promise(resolve => setTimeout(resolve, 200));
+        continue;
+      }
+      
+      // Check if it has captions data
+      const hasCaptions = window.ytInitialPlayerResponse?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
+      if (hasCaptions && hasCaptions.length > 0) {
+        console.log('[CaptionExtractor] ytInitialPlayerResponse is ready with captions');
         return true;
       }
-      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      lastCheck = 'Has videoDetails but no captions yet';
+      await new Promise(resolve => setTimeout(resolve, 200));
     }
-    console.log('[CaptionExtractor] Timeout waiting for ytInitialPlayerResponse');
+    
+    console.log('[CaptionExtractor] Timeout waiting for ytInitialPlayerResponse. Last check:', lastCheck);
+    console.log('[CaptionExtractor] Current state:', {
+      exists: !!window.ytInitialPlayerResponse,
+      hasVideoDetails: !!window.ytInitialPlayerResponse?.videoDetails,
+      hasCaptionsObject: !!window.ytInitialPlayerResponse?.captions,
+      hasCaptionTracks: !!window.ytInitialPlayerResponse?.captions?.playerCaptionsTracklistRenderer?.captionTracks
+    });
     return false;
   }
 
