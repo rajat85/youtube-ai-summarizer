@@ -9,14 +9,27 @@ class CaptionExtractor {
    */
   static async extract(videoId) {
     try {
+      console.log('[CaptionExtractor] Starting extraction for video:', videoId);
+      
       // Method 1: Try ytInitialPlayerResponse
       const transcript = await this.extractFromPlayerResponse();
-      if (transcript) return transcript;
+      if (transcript) {
+        console.log('[CaptionExtractor] Successfully extracted from player response, length:', transcript.length);
+        return transcript;
+      }
+      
+      console.log('[CaptionExtractor] Player response failed, trying timedtext API');
 
       // Method 2: Try timedtext API
-      return await this.extractFromTimedtext(videoId);
+      const timedtextResult = await this.extractFromTimedtext(videoId);
+      if (timedtextResult) {
+        console.log('[CaptionExtractor] Successfully extracted from timedtext, length:', timedtextResult.length);
+      } else {
+        console.log('[CaptionExtractor] Timedtext API also failed - no captions available');
+      }
+      return timedtextResult;
     } catch (error) {
-      console.error('Error extracting captions:', error);
+      console.error('[CaptionExtractor] Error extracting captions:', error);
       return null;
     }
   }
@@ -29,6 +42,7 @@ class CaptionExtractor {
     try {
       // YouTube embeds player data in page
       if (typeof window === 'undefined' || typeof window.ytInitialPlayerResponse === 'undefined' || !window.ytInitialPlayerResponse) {
+        console.log('[CaptionExtractor] ytInitialPlayerResponse not available');
         return null;
       }
 
@@ -36,8 +50,12 @@ class CaptionExtractor {
       const captionTracks = playerResponse?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
 
       if (!captionTracks || captionTracks.length === 0) {
+        console.log('[CaptionExtractor] No caption tracks found in player response');
         return null;
       }
+
+      console.log('[CaptionExtractor] Found', captionTracks.length, 'caption tracks:', 
+                  captionTracks.map(t => `${t.languageCode} (${t.kind || 'manual'})`).join(', '));
 
       // Find English captions (prefer manual over auto-generated)
       const englishTrack = captionTracks.find(track =>
@@ -48,17 +66,23 @@ class CaptionExtractor {
       );
 
       if (!englishTrack) {
+        console.log('[CaptionExtractor] No English caption track found');
         return null;
       }
 
+      console.log('[CaptionExtractor] Using track:', englishTrack.languageCode, englishTrack.kind || 'manual');
+
       // Fetch caption data
       const response = await fetch(englishTrack.baseUrl);
-      if (!response.ok) return null;
+      if (!response.ok) {
+        console.log('[CaptionExtractor] Failed to fetch captions, status:', response.status);
+        return null;
+      }
       const xmlText = await response.text();
 
       return this.parseXml(xmlText);
     } catch (error) {
-      console.error('Error extracting from player response:', error);
+      console.error('[CaptionExtractor] Error extracting from player response:', error);
       return null;
     }
   }
@@ -71,14 +95,18 @@ class CaptionExtractor {
   static async extractFromTimedtext(videoId) {
     try {
       const url = `https://www.youtube.com/api/timedtext?v=${videoId}&lang=en&fmt=json3`;
+      console.log('[CaptionExtractor] Fetching from timedtext API:', url);
       const response = await fetch(url);
 
-      if (!response.ok) return null;
+      if (!response.ok) {
+        console.log('[CaptionExtractor] Timedtext API failed, status:', response.status);
+        return null;
+      }
 
       const data = await response.json();
       return this.parseJson3(data);
     } catch (error) {
-      console.error('Error extracting from timedtext:', error);
+      console.error('[CaptionExtractor] Error extracting from timedtext:', error);
       return null;
     }
   }
