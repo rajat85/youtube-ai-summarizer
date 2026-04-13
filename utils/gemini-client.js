@@ -179,20 +179,32 @@ Provide a brief summary of what this video is likely about. Format as:
           throw new Error('No response from API');
         }
 
-        // Check for content safety filter
-        if (data.candidates?.[0]?.finishReason === 'SAFETY') {
-          throw new Error('CONTENT_FILTERED');
-        }
-
         // Validate response structure with defensive checks
         const candidate = data.candidates?.[0];
         console.log('Candidate structure:', JSON.stringify(candidate, null, 2));
+
+        const finishReason = candidate?.finishReason;
+
+        // Check for content safety filter
+        if (finishReason === 'SAFETY') {
+          throw new Error('CONTENT_FILTERED');
+        }
+
+        // Check for max tokens truncation
+        if (finishReason === 'MAX_TOKENS') {
+          console.warn('Response truncated due to max tokens. Consider increasing maxOutputTokens.');
+        }
 
         const text = candidate?.content?.parts?.[0]?.text;
         if (!text) {
           console.error('Invalid response structure. Full candidate:', JSON.stringify(candidate, null, 2));
           console.error('Content:', candidate?.content);
           console.error('Parts:', candidate?.content?.parts);
+          console.error('Finish reason:', finishReason);
+
+          if (finishReason === 'MAX_TOKENS') {
+            throw new Error('Response truncated - token limit too low');
+          }
           throw new Error('Invalid API response structure');
         }
 
