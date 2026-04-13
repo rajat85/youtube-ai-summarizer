@@ -3,6 +3,55 @@
 
 class CaptionExtractor {
   /**
+   * Inject caption fetch helper into page context
+   */
+  static injectFetchHelper() {
+    if (document.getElementById('yt-ai-caption-helper')) {
+      return; // Already injected
+    }
+
+    const script = document.createElement('script');
+    script.id = 'yt-ai-caption-helper';
+    script.src = chrome.runtime.getURL('utils/caption-fetch-helper.js');
+    (document.head || document.documentElement).appendChild(script);
+  }
+
+  /**
+   * Fetch captions using page context helper (bypass CORS)
+   */
+  static async fetchViaPageContext(url) {
+    return new Promise((resolve, reject) => {
+      const requestId = Math.random().toString(36).substring(7);
+      const timeout = setTimeout(() => {
+        window.removeEventListener('message', messageHandler);
+        reject(new Error('Fetch timeout'));
+      }, 10000);
+
+      const messageHandler = (event) => {
+        if (event.source !== window) return;
+        if (event.data.type === 'FETCH_CAPTIONS_RESPONSE' && event.data.requestId === requestId) {
+          clearTimeout(timeout);
+          window.removeEventListener('message', messageHandler);
+          
+          if (event.data.success) {
+            resolve(event.data.data);
+          } else {
+            reject(new Error(event.data.error));
+          }
+        }
+      };
+
+      window.addEventListener('message', messageHandler);
+      window.postMessage({
+        type: 'FETCH_CAPTIONS_REQUEST',
+        requestId: requestId,
+        url: url
+      }, '*');
+    });
+  }
+
+
+  /**
    * Wait for ytInitialPlayerResponse to be available
    * @param {number} timeout - Max wait time in ms
    * @returns {Promise<boolean>}
@@ -155,14 +204,11 @@ class CaptionExtractor {
       console.log('[CaptionExtractor] Using track:', englishTrack.languageCode, englishTrack.kind || 'manual');
       console.log('[CaptionExtractor] Fetching from URL:', englishTrack.baseUrl);
 
-      // Fetch caption data
-      const response = await fetch(englishTrack.baseUrl);
-      console.log('[CaptionExtractor] Fetch response status:', response.status, response.statusText);
-      if (!response.ok) {
-        console.log('[CaptionExtractor] Failed to fetch captions, status:', response.status);
-        return null;
-      }
-      const xmlText = await response.text();
+      // Inject helper script if needed
+      this.injectFetchHelper();
+
+      // Fetch caption data using page context to bypass CORS
+      const xmlText = await this.fetchViaPageContext(englishTrack.baseUrl);
       console.log('[CaptionExtractor] Response text length:', xmlText.length, 'First 200 chars:', xmlText.substring(0, 200));
 
       return this.parseXml(xmlText);
