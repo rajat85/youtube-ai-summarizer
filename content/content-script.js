@@ -106,15 +106,25 @@ class YouTubeSummarizer {
    * Inject summarize button
    */
   async injectButton() {
-    // Wait for video metadata section
-    const container = await this.waitForElement('#above-the-fold, #top-row');
-
     // Function to create and inject button
     const createAndInjectButton = () => {
       // Check if button already exists
       if (document.getElementById('yt-ai-summarize-btn')) {
-        return;
+        return true;
       }
+
+      // Find the actions menu (Like, Dislike, Share buttons)
+      const actionsMenu = document.querySelector('#top-level-buttons-computed, ytd-menu-renderer.ytd-watch-metadata #top-level-buttons-computed');
+      if (!actionsMenu) {
+        console.warn('YouTube actions menu not found, retrying...');
+        return false;
+      }
+
+      // Create button container to match YouTube's style
+      const buttonContainer = document.createElement('div');
+      buttonContainer.id = 'yt-ai-button-container';
+      buttonContainer.style.display = 'flex';
+      buttonContainer.style.marginLeft = '8px';
 
       // Create button
       this.button = document.createElement('button');
@@ -125,30 +135,32 @@ class YouTubeSummarizer {
       // Add click handler
       this.button.addEventListener('click', () => this.handleSummarize());
 
-      // Find good insertion point
-      const actionsRow = container.querySelector('#top-level-buttons-computed, #menu-container');
-      if (actionsRow) {
-        actionsRow.insertAdjacentElement('afterend', this.button);
-      } else {
-        container.appendChild(this.button);
-      }
+      buttonContainer.appendChild(this.button);
+      actionsMenu.appendChild(buttonContainer);
+
+      console.log('YouTube AI Summarizer button injected');
+      return true;
     };
 
-    // Initial injection
-    createAndInjectButton();
+    // Wait for YouTube to load
+    await this.waitForElement('#movie_player');
 
-    // Watch for YouTube's dynamic updates that might remove the button
+    // Set up observer to inject and maintain button
     const observer = new MutationObserver(() => {
       if (!document.getElementById('yt-ai-summarize-btn')) {
         createAndInjectButton();
       }
     });
 
-    observer.observe(container, {
+    observer.observe(document.body, {
       childList: true,
       subtree: true
     });
+
+    // Try initial injection
+    createAndInjectButton();
   }
+
 
   /**
    * Update button state
