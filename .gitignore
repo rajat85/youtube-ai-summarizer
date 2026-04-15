@@ -14,3 +14,7 @@ build/
 # Chrome extension
 *.pem
 *.crx
+
+# Claude Code memory and backups
+.claude/
+*.backup
