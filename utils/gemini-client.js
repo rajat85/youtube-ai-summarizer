@@ -35,6 +35,14 @@ Guidelines:
 - Be conversational but informative
 - Keep responses under 150 words unless more detail is requested`;
 
+  static QA_METADATA_PROMPT = `You are an AI assistant helping users understand a YouTube video. No transcript is available. You only have public metadata (title, channel, description, a few comments) and an AI-generated summary that may be incomplete.
+
+Guidelines:
+- Answer from this limited context only; do not invent specific quotes or timestamps
+- When the information is not in the metadata or summary, say clearly that you cannot tell from what is available
+- Be conversational but informative
+- Keep responses under 150 words unless more detail is requested`;
+
   /**
    * Generate summary for a transcript
    * @param {string} apiKey - Gemini API key
@@ -93,26 +101,60 @@ Provide a brief summary of what this video is likely about. Format as:
   }
 
   /**
-   * Answer question about video
+   * Build initial QA context message (transcript or metadata-only).
+   * @param {{ transcript?: string, metadata?: Object, summaryContext?: string }} ctx
+   * @returns {{ userText: string, modelAck: string }}
+   */
+  static buildQAContextParts(ctx) {
+    const transcript = (ctx.transcript || '').trim();
+    if (transcript) {
+      return {
+        userText: `${this.QA_SYSTEM_PROMPT}\n\nVideo Transcript:\n${transcript}`,
+        modelAck: 'I understand. I have the transcript and will answer questions based on it.'
+      };
+    }
+
+    const m = ctx.metadata || {};
+    const comments = Array.isArray(m.comments) && m.comments.length
+      ? m.comments.join('\n')
+      : '(none)';
+    const summaryBlock = (ctx.summaryContext || '').trim() || '(no summary available)';
+
+    const userText = `${this.QA_METADATA_PROMPT}
+
+Title: ${m.title || '(unknown)'}
+Channel: ${m.channelName || '(unknown)'}
+Description:
+${m.description || '(none)'}
+
+Top comments:
+${comments}
+
+Prior AI summary (may be incomplete):
+${summaryBlock}`;
+
+    return {
+      userText,
+      modelAck: 'I understand. I only have metadata and the summary, and I will not invent details beyond that.'
+    };
+  }
+
+  /**
+   * Answer question about video (transcript and/or metadata + summary context).
    * @param {string} apiKey - Gemini API key
-   * @param {string} transcript - Video transcript
    * @param {string} question - User question
    * @param {Array} conversationHistory - Previous messages
+   * @param {{ transcript?: string, metadata?: Object, summaryContext?: string }} context
    * @returns {Promise<string>} Answer text
    */
-  static async answerQuestion(apiKey, transcript, question, conversationHistory = []) {
+  static async answerQuestion(apiKey, question, conversationHistory = [], context = {}) {
+    const { userText, modelAck } = this.buildQAContextParts(context);
+
     const contents = [
-      {
-        role: 'user',
-        parts: [{ text: `${this.QA_SYSTEM_PROMPT}\n\nVideo Transcript:\n${transcript}` }]
-      },
-      {
-        role: 'model',
-        parts: [{ text: 'I understand. I have the transcript and will answer questions based on it.' }]
-      }
+      { role: 'user', parts: [{ text: userText }] },
+      { role: 'model', parts: [{ text: modelAck }] }
     ];
 
-    // Add conversation history
     conversationHistory.forEach(msg => {
       contents.push({
         role: msg.role === 'user' ? 'user' : 'model',
@@ -120,7 +162,6 @@ Provide a brief summary of what this video is likely about. Format as:
       });
     });
 
-    // Add current question
     contents.push({
       role: 'user',
       parts: [{ text: question }]

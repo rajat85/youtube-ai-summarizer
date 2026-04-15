@@ -66,8 +66,18 @@ async function handleGenerateSummary(message, sendResponse) {
  */
 async function handleAnswerQuestion(message, sendResponse) {
   try {
-    // Validate required fields
-    if (!message.transcript || !message.question) {
+    if (!message.question || typeof message.question !== 'string') {
+      sendResponse({ error: 'MISSING_REQUIRED_FIELDS' });
+      return;
+    }
+
+    const transcript = (message.transcript && String(message.transcript).trim()) || '';
+    const hasMetadata =
+      message.metadata &&
+      typeof message.metadata === 'object' &&
+      (message.metadata.title || message.metadata.description || message.metadata.channelName);
+
+    if (!transcript && !hasMetadata) {
       sendResponse({ error: 'MISSING_REQUIRED_FIELDS' });
       return;
     }
@@ -75,12 +85,15 @@ async function handleAnswerQuestion(message, sendResponse) {
     // Get API key
     const apiKey = await getApiKey();
 
-    // Answer question
     const answer = await GeminiClient.answerQuestion(
       apiKey,
-      message.transcript,
       message.question,
-      message.conversationHistory || []
+      message.conversationHistory || [],
+      {
+        transcript: transcript || undefined,
+        metadata: hasMetadata ? message.metadata : undefined,
+        summaryContext: message.summaryContext
+      }
     );
 
     sendResponse({ answer });
@@ -109,7 +122,7 @@ async function handleValidateApiKey(message, sendResponse) {
         parts: [{ text: testPrompt }]
       }],
       generationConfig: {
-        maxOutputTokens: 10
+        maxOutputTokens: 100
       }
     };
 

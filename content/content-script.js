@@ -1,12 +1,18 @@
 // content/content-script.js
 // Main content script - injects UI and handles interactions
 
+/** Rolling window: this many user follow-up questions (with answers) are sent to the model. */
+const MAX_QA_CONTEXT_QUESTIONS = 10;
+const MAX_QA_CONTEXT_MESSAGES = MAX_QA_CONTEXT_QUESTIONS * 2;
+
 class YouTubeSummarizer {
   constructor() {
     this.currentVideoId = null;
     this.sidebar = null;
     this.button = null;
     this.transcript = null;
+    this.qaSource = null;
+    this.lastSummaryText = null;
     this.conversationHistory = [];
 
     this.init();
@@ -81,11 +87,14 @@ class YouTubeSummarizer {
     if (newVideoId && newVideoId !== this.currentVideoId) {
       this.currentVideoId = newVideoId;
       this.transcript = null;
+      this.qaSource = null;
+      this.lastSummaryText = null;
       this.conversationHistory = [];
 
       // Close sidebar
       if (this.sidebar) {
         this.sidebar.classList.remove('open');
+        this.updateQuestionContextHint();
       }
 
       // Update button
@@ -174,11 +183,12 @@ class YouTubeSummarizer {
 
   /**
    * Handle summarize button click
+   * @param {{ forceRefresh?: boolean }} options - forceRefresh skips the "sidebar already open" guard (used by Regenerate)
    */
-  async handleSummarize() {
+  async handleSummarize(options = {}) {
+    const forceRefresh = options.forceRefresh === true;
     try {
-      // Check if sidebar already open
-      if (this.sidebar && this.sidebar.classList.contains('open')) {
+      if (!forceRefresh && this.sidebar && this.sidebar.classList.contains('open')) {
         return;
       }
 
@@ -193,11 +203,13 @@ class YouTubeSummarizer {
       // Show loading
       this.showLoading();
 
-      // Check cache first
+      // Check cache first (skipped after cache clear + forceRefresh until new summary is stored)
       const cached = await StorageManager.getSummary(this.currentVideoId);
 
       if (cached) {
         await StorageManager.updateStats('hit');
+        this.qaSource = cached.hasCaptions === false ? 'metadata' : 'transcript';
+        this.transcript = null;
         this.displaySummary(cached.summary, true);
         return;
       }
@@ -210,8 +222,10 @@ class YouTubeSummarizer {
 
       // Generate summary
       if (this.transcript) {
+        this.qaSource = 'transcript';
         summary = await this.requestSummary(this.transcript);
       } else {
+        this.qaSource = 'metadata';
         // Fallback to metadata
         const metadata = CaptionExtractor.extractMetadata();
         summary = await this.requestMetadataSummary(metadata);
@@ -321,8 +335,11 @@ class YouTubeSummarizer {
         <div id="chat-container"></div>
       </div>
       <div class="sidebar-footer">
-        <input type="text" placeholder="Ask a question..." id="chat-input">
-        <button id="send-btn">Send</button>
+        <div class="sidebar-footer-input-row">
+          <input type="text" placeholder="Ask a question..." id="chat-input">
+          <button id="send-btn">Send</button>
+        </div>
+        <p class="chat-context-hint" id="chat-context-hint" aria-live="polite"></p>
       </div>
     `;
 
@@ -335,6 +352,29 @@ class YouTubeSummarizer {
 
     // Setup chat handlers
     this.setupChatHandlers();
+    this.updateQuestionContextHint();
+  }
+
+  /**
+   * Update footer hint: how many follow-up questions fit in rolling context vs remaining.
+   */
+  updateQuestionContextHint() {
+    if (!this.sidebar) return;
+    const el = this.sidebar.querySelector('#chat-context-hint');
+    if (!el) return;
+
+    const max = MAX_QA_CONTEXT_QUESTIONS;
+    const pairs = Math.floor(this.conversationHistory.length / 2);
+    const used = Math.min(max, pairs);
+    const remaining = Math.max(0, max - used);
+
+    if (used === 0) {
+      el.textContent = `Up to ${max} follow-up questions are kept in context (${remaining} remaining).`;
+    } else if (remaining > 0) {
+      el.textContent = `Follow-ups in context: ${used}/${max} used — ${remaining} remaining before the oldest is dropped.`;
+    } else {
+      el.textContent = `Follow-ups in context: ${max}/${max} used — new questions replace the oldest pair.`;
+    }
   }
 
   /**
@@ -385,6 +425,7 @@ class YouTubeSummarizer {
    */
   displaySummary(summary, cached = false) {
     if (!this.sidebar) return;
+    this.lastSummaryText = summary;
     const container = this.sidebar.querySelector('#summary-container');
 
     const cachedBadge = cached ? '<span class="cached-badge">📦 From Cache</span>' : '';
@@ -402,15 +443,20 @@ class YouTubeSummarizer {
     // Add regenerate handler
     container.querySelector('.regenerate-btn').addEventListener('click', async () => {
       try {
-        // Clear cache for this video
         await StorageManager.removeSummary(this.currentVideoId);
-        // Regenerate
-        this.handleSummarize();
+        this.conversationHistory = [];
+        this.transcript = null;
+        const chatContainer = this.sidebar?.querySelector('#chat-container');
+        if (chatContainer) chatContainer.innerHTML = '';
+        this.updateQuestionContextHint();
+        await this.handleSummarize({ forceRefresh: true });
       } catch (error) {
         console.error('Failed to clear cache:', error);
         this.showMessage('Failed to clear cache', 'error');
       }
     });
+
+    this.updateQuestionContextHint();
   }
 
   /**
@@ -461,9 +507,8 @@ class YouTubeSummarizer {
    * @param {string} question - User's question
    */
   async handleQuestion(question) {
-    // Check if we have transcript
-    if (!this.transcript) {
-      this.showMessage('❌ Cannot answer questions without video transcript', 'error');
+    if (!this.qaSource) {
+      this.showMessage('Summarize the video first, then you can ask questions.', 'error');
       return;
     }
 
@@ -474,8 +519,33 @@ class YouTubeSummarizer {
     const loadingMsg = this.addChatMessage('Thinking...', 'assistant', true);
 
     try {
-      // Request answer from service worker
-      const answer = await this.requestAnswer(question);
+      let transcript = this.transcript;
+      if (this.qaSource === 'transcript' && (!transcript || !String(transcript).trim())) {
+        transcript = await CaptionExtractor.extract(this.currentVideoId);
+        this.transcript = transcript;
+      }
+
+      const hasTranscript = !!(transcript && String(transcript).trim());
+      const metadata = hasTranscript ? undefined : CaptionExtractor.extractMetadata();
+      const summaryContext = this.lastSummaryText || '';
+
+      if (!hasTranscript) {
+        const hasMeta =
+          (metadata.title && metadata.title.trim()) ||
+          (metadata.description && metadata.description.trim()) ||
+          (metadata.channelName && metadata.channelName.trim());
+        if (!hasMeta) {
+          throw new Error('NO_PAGE_CONTEXT');
+        }
+      }
+
+      const answer = await this.requestAnswer({
+        question,
+        transcript: hasTranscript ? transcript : undefined,
+        metadata,
+        summaryContext,
+        conversationHistory: this.conversationHistory
+      });
 
       // Remove loading message
       if (loadingMsg && loadingMsg.parentNode) {
@@ -485,16 +555,17 @@ class YouTubeSummarizer {
       // Add assistant response
       this.addChatMessage(answer, 'assistant');
 
-      // Update conversation history (keep last 10 exchanges = 20 messages)
+      // Update conversation history (rolling window of follow-up Q&A)
       this.conversationHistory.push(
         { role: 'user', content: question },
         { role: 'assistant', content: answer }
       );
 
-      // Keep only last 10 exchanges (20 messages)
-      if (this.conversationHistory.length > 20) {
-        this.conversationHistory = this.conversationHistory.slice(-20);
+      if (this.conversationHistory.length > MAX_QA_CONTEXT_MESSAGES) {
+        this.conversationHistory = this.conversationHistory.slice(-MAX_QA_CONTEXT_MESSAGES);
       }
+
+      this.updateQuestionContextHint();
 
     } catch (error) {
       // Remove loading message
@@ -503,24 +574,30 @@ class YouTubeSummarizer {
       }
 
       console.error('Error in handleQuestion:', error);
-      this.addChatMessage('❌ Failed to get answer. Please try again.', 'assistant');
+      const hint =
+        error.message === 'NO_PAGE_CONTEXT'
+          ? 'Could not read enough about this video from the page to answer. Try refreshing.'
+          : 'Failed to get answer. Please try again.';
+      this.addChatMessage(`❌ ${hint}`, 'assistant');
     }
   }
 
   /**
    * Request answer from service worker
-   * @param {string} question - User's question
+   * @param {{ question: string, transcript?: string, metadata?: Object, summaryContext?: string, conversationHistory: Array }} payload
    * @returns {Promise<string>}
    */
-  requestAnswer(question) {
+  requestAnswer(payload) {
     return new Promise((resolve, reject) => {
       chrome.runtime.sendMessage(
         {
           type: 'ANSWER_QUESTION',
           videoId: this.currentVideoId,
-          question: question,
-          transcript: this.transcript,
-          conversationHistory: this.conversationHistory
+          question: payload.question,
+          transcript: payload.transcript,
+          metadata: payload.metadata,
+          summaryContext: payload.summaryContext,
+          conversationHistory: payload.conversationHistory
         },
         response => {
           // Check for Chrome runtime errors
@@ -635,7 +712,7 @@ class YouTubeSummarizer {
     // Add button handler
     if (showRetry) {
       container.querySelector('.retry-btn').addEventListener('click', () => {
-        this.handleSummarize();
+        this.handleSummarize({ forceRefresh: true });
       });
     } else {
       const settingsBtn = container.querySelector('.settings-btn');
