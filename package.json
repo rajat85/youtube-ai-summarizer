@@ -1,0 +1,17 @@
+{
+  "name": "youtube-ai-summarizer-demo",
+  "version": "1.0.0",
+  "description": "Automated demo recording for YouTube AI Summarizer",
+  "scripts": {
+    "demo": "node demo-recorder.js",
+    "demo:short": "node demo-recorder.js short",
+    "demo:full": "node demo-recorder.js full",
+    "install-browsers": "npx playwright install chromium"
+  },
+  "keywords": [],
+  "author": "Rajat Subhra Ghosh",
+  "license": "MIT",
+  "devDependencies": {
+    "playwright": "^1.40.0"
+  }
+}

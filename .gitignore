@@ -15,6 +15,14 @@ build/
 *.pem
 *.crx
 
+# Playwright demo profile & recordings
+.playwright-chrome-profile/
+test-results/
+
 # Claude Code memory and backups
 .claude/
 *.backup
+
+# Demo recording output
+demo-videos/
+package-lock.json
