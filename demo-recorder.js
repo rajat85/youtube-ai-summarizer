@@ -234,9 +234,10 @@ async function main() {
   console.log(`📁 Extension path: ${CONFIG.extensionPath}`);
   console.log(`💾 Videos will be saved to: ${CONFIG.videosDir}\n`);
   
-  // Launch browser with extension
-  console.log('🚀 Launching Chrome with extension...');
+  // Launch Chrome browser with extension
+  console.log('🚀 Launching Chrome browser with extension...');
   const context = await chromium.launchPersistentContext('', {
+    channel: 'chrome',  // Use installed Chrome instead of Chromium
     headless: false,
     args: [
       `--disable-extensions-except=${CONFIG.extensionPath}`,
@@ -250,7 +251,7 @@ async function main() {
     }
   });
   
-  console.log('✅ Browser launched\n');
+  console.log('✅ Chrome browser launched\n');
   
   try {
     // Setup API key
@@ -273,6 +274,7 @@ async function main() {
     
   } catch (error) {
     console.error('\n❌ Error during recording:', error.message);
+    console.error('Stack:', error.stack);
     await context.close();
     process.exit(1);
   }

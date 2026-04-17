@@ -1,203 +1,187 @@
 # YouTube AI Summarizer
 
-AI-powered Chrome extension using Gemini Flash 2.0 to instantly summarize and interact with YouTube videos.
+A Chrome extension that uses Google Gemini to summarize any YouTube watch page and answer follow-up questions from the transcript (or from metadata when captions are not available).
 
 ## Features
 
-- ✨ **One-Click Summaries** - Get AI-generated summaries of any YouTube video
-- 💬 **Interactive Q&A** - Ask questions about the video content
-- 📝 **Caption Extraction** - Works with videos that have captions/subtitles
-- 🎨 **YouTube-Native Design** - Seamless integration with YouTube's interface
-- 💾 **Smart Caching** - 30-day cache with 4MB size management
-- 🔄 **Metadata Fallback** - Basic summaries even without captions
-- 🌙 **Dark Mode Support** - Automatic theme matching
-- 🔒 **Client-Side Only** - No backend required, works with free Gemini API
+- **AI-powered summaries**: Uses Gemini (`gemini-flash-latest`) with structured overview, main points, and takeaways
+- **Interactive Q&A**: Ask questions grounded in the video transcript or available metadata
+- **Caption-aware**: Extracts captions when present; falls back to title, description, and comments when not
+- **Secure & private**: Your API key stays in Chrome storage; no separate backend
+- **YouTube-native UI**: Summarize control alongside the watch page; sidebar for results and chat
+- **Smart caching**: Local cache with TTL and size management to reduce repeat API calls
+- **Free tier friendly**: Works with the standard Gemini free quota for personal use
 
 ## Installation
 
-### For Development
+### Step 1: Get a Free Gemini API Key
 
-1. **Clone the repository:**
+1. Visit [Google AI Studio](https://aistudio.google.com/app/apikey)
+2. Sign in with your Google account
+3. Click **Create API key**
+4. Copy the generated API key (typically starts with `AIza...`)
+
+### Step 2: Install the Extension
+
+1. Download or clone this repository:
    ```bash
-   git clone git@github.com:rajat85/youtube-ai-summarizer.git
+   git clone https://github.com/rajat85/youtube-ai-summarizer.git
    cd youtube-ai-summarizer
    ```
 
-2. **Load in Chrome:**
-   - Open Chrome and go to `chrome://extensions/`
-   - Enable "Developer mode" (top right)
-   - Click "Load unpacked"
-   - Select the extension directory
+2. Open Chrome and go to `chrome://extensions`
 
-3. **Set up API key:**
-   - Click the extension icon
-   - Enter your [Gemini API key](https://makersuite.google.com/app/apikey)
-   - Click "Save"
+3. Turn on **Developer mode** (toggle in the top-right)
 
-### For Users
+4. Click **Load unpacked**
 
-*Coming soon: Chrome Web Store link*
+5. Select this project folder (the one containing `manifest.json`)
+
+6. Confirm **YouTube AI Summarizer** appears in your extensions list
+
+### Step 3: Configure API Key
+
+1. Click the extension icon in the Chrome toolbar (or open the extension popup from the puzzle menu)
+2. Paste your Gemini API key
+3. Save the key using the popup UI
+
+You can now use the extension on supported YouTube URLs.
 
 ## Usage
 
-1. **Open any YouTube video**
-2. **Click the "✨ Summarize" button** next to Like/Dislike
-3. **View the AI-generated summary** in the sidebar
-4. **Ask questions** about the video in the chat box
-5. **Regenerate** summaries or clear cache as needed
+### Demo video
 
-## Demo Recording
+[![YouTube AI Summarizer demo](https://img.youtube.com/vi/Utlc72-O_o0/maxresdefault.jpg)](https://youtu.be/Utlc72-O_o0)
 
-Want to create a demo video? See [DEMO_RECORDING.md](DEMO_RECORDING.md) for automated demo recording setup.
+**Click the thumbnail above to watch the extension in action.**
 
-Quick start:
+### How to use
+
+1. Open a YouTube **watch** page on `www.youtube.com` (standard `watch?v=...` URLs)
+2. Click the **✨ Summarize** button injected near the player actions (like/dislike area)
+3. Wait for the summary to appear in the sidebar
+4. Use the chat area to ask questions about the video; regenerate or clear cache from the UI when needed
+
+### What you'll see
+
+- A sidebar with structured summary sections (overview, main points, takeaways)
+- A Q&A area for follow-up questions about the video
+
+## Supported sites
+
+- `https://www.youtube.com/watch?*` (watch pages only; other YouTube surfaces are out of scope for the content script)
+
+## Privacy & security
+
+- **No dedicated analytics**: The extension is designed for local use with your own API key
+- **Local storage**: Settings and cache use Chrome extension storage APIs
+- **Direct API calls**: Requests go from your browser to Google’s Generative Language API as configured in the manifest
+- **Open source**: You can review all scripts in this repository
+
+## API usage & limits
+
+Typical Gemini free-tier limits (check [Google AI pricing](https://ai.google.dev/pricing) for current numbers) include per-minute and per-day caps. The client uses retries with backoff for transient errors. For heavy use, space out summarization requests.
+
+## Troubleshooting
+
+### Summarize control does not appear
+
+- Confirm the URL is a `www.youtube.com/watch?...` page and reload the tab
+- On `chrome://extensions`, ensure the extension is enabled and try **Reload** on the extension card
+
+### “No captions” or weak summaries
+
+- Some videos have no captions; the extension falls back to metadata-based context, which is less detailed than transcript-based summaries
+
+### Invalid API key or quota errors
+
+- Verify the key from [Google AI Studio](https://aistudio.google.com/app/apikey) and save it again in the popup
+- Check quota and billing settings in Google AI / Cloud console if you use paid tiers
+
+### Analysis fails or times out
+
+- Check your network connection
+- Reload the watch page and try again
+- Inspect the service worker log: `chrome://extensions` → **Service worker** → **Inspect** for the extension
+
+## Development
+
+### Project structure
+
+```
+youtube-ai-summarizer/
+├── manifest.json              # Extension manifest (MV3)
+├── background/
+│   └── service-worker.js      # Background worker (API orchestration)
+├── content/
+│   ├── content-script.js      # Watch-page UI and logic
+│   └── styles.css             # Injected styles
+├── popup/
+│   ├── popup.html             # Popup / options surface
+│   ├── popup.js
+│   └── popup.css
+├── utils/
+│   ├── caption-extractor.js   # Caption / player data extraction
+│   ├── caption-fetch-helper.js
+│   ├── gemini-client.js       # Gemini API wrapper
+│   └── storage.js             # Storage helpers
+├── icons/                     # Extension icons
+├── demo-recorder.js           # Optional Playwright demo recorder entry
+├── scripts/
+│   └── playwright-demo.mjs    # Playwright demo script
+├── package.json               # Demo tooling dependencies
+└── README.md                  # This file
+```
+
+### Local development
+
+1. Edit the source files above
+2. Open `chrome://extensions` and click **Reload** on the extension tile
+3. Reload any open YouTube watch tab and exercise summarize / Q&A flows
+
+### Automated demo recording (optional)
+
+For scripted demos with Playwright:
+
 ```bash
-./setup-demo.sh
+npm install
+npx playwright install chromium
 export GEMINI_API_KEY="your-key-here"
 npm run demo:short
 ```
 
-## Project Structure
+Adjust scripts in `demo-recorder.js` / `scripts/playwright-demo.mjs` to match your recording scenario.
 
-```
-youtube-ai-summarizer/
-├── background/
-│   └── service-worker.js      # Background service worker for API calls
-├── content/
-│   ├── content-script.js      # Main content script (UI & interactions)
-│   └── styles.css             # YouTube-native styling
-├── popup/
-│   ├── popup.html             # Extension popup
-│   ├── popup.js               # Popup logic
-│   └── popup.css              # Popup styling
-├── utils/
-│   ├── caption-extractor.js   # YouTube caption extraction
-│   ├── caption-fetch-helper.js # CORS bypass helper
-│   ├── gemini-client.js       # Gemini API wrapper
-│   └── storage.js             # Chrome storage manager
-├── icons/                     # Extension icons
-├── manifest.json              # Extension manifest
-└── demo-recorder.js           # Automated demo recording
-```
+### Building
 
-## Key Technologies
-
-- **Gemini Flash 2.0** - Google's latest fast AI model
-- **Chrome Extension Manifest V3** - Latest extension format
-- **Content Scripts** - JavaScript injection into YouTube pages
-- **Service Workers** - Background API communication
-- **Chrome Storage API** - Local caching and settings
-- **Playwright** - Automated demo recording
-
-## Technical Highlights
-
-### Caption Extraction
-- Extracts from `ytInitialPlayerResponse` (DOM parsing)
-- CORS bypass via page context injection
-- Fallback to timedtext API
-- Supports multiple languages (prioritizes English)
-
-### Smart Caching
-- 30-day TTL per video
-- 4MB size threshold with automatic cleanup
-- LRU-style old entry removal
-- Separate storage for metadata vs transcript summaries
-
-### Q&A System
-- **Transcript-based Q&A** - Full video content as context
-- **Metadata fallback** - Works without captions using title/description
-- **Rolling context window** - Keeps last 10 Q&A pairs
-- **Context hints** - Shows remaining context slots
-
-### Security
-- XSS protection with HTML entity escaping
-- Input validation and sanitization
-- Safe DOM manipulation
-- No external dependencies except Gemini API
-
-## Configuration
-
-### API Limits (Free Tier)
-- **15 requests per minute**
-- **1,500 requests per day**
-- **1 million tokens per month**
-
-The extension handles rate limiting gracefully with exponential backoff.
-
-### Storage Limits
-- **Chrome Storage Local**: ~10MB (used for caching)
-- **Chrome Storage Sync**: ~100KB (used for API key)
-
-## Development
-
-### Prerequisites
-- Node.js (for demo recording only)
-- Chrome/Chromium browser
-- Gemini API key
-
-### Testing
-1. Load extension in Chrome (Developer mode)
-2. Open a YouTube video with captions
-3. Click Summarize button
-4. Test Q&A feature
-5. Check console for logs
-
-### Debugging
-- **Content Script logs**: F12 on YouTube page → Console
-- **Service Worker logs**: `chrome://extensions` → Extension details → Service worker → Inspect
-- **Extension popup logs**: Right-click extension icon → Inspect popup
-
-## Known Limitations
-
-- Requires videos to have captions/subtitles for full functionality
-- Metadata-only summaries are less detailed
-- Free tier API has daily request limits
-- English language prioritized for captions
-
-## Troubleshooting
-
-### Button doesn't appear
-- Refresh the YouTube page
-- Reload the extension
-- Check if content script is running (console logs)
-
-### "No captions available"
-- Video doesn't have captions/subtitles
-- You'll get a limited metadata-based summary
-- Questions will work with metadata context
-
-### API errors
-- Check your API key is valid
-- Verify you haven't exceeded daily quota
-- Check network connectivity
-- See service worker console for details
+No bundler is required for the extension itself; load the folder as unpacked. Node.js is only needed for optional demo automation.
 
 ## Contributing
 
-Contributions welcome! Please:
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test thoroughly
-5. Submit a pull request
+Contributions are welcome.
+
+1. Fork the repository  
+2. Create a feature branch  
+3. Make focused changes with manual testing on real watch pages  
+4. Open a pull request describing behavior and test notes  
 
 ## License
 
-MIT License - see LICENSE file for details
+MIT License — use, modify, and distribute according to the license terms in this repository.
 
-## Author
+## Disclaimer
 
-**Rajat Subhra Ghosh**
-- GitHub: [@rajat85](https://github.com/rajat85)
-- Email: rajat85_it@yahoo.co.in
+This project is not affiliated with or endorsed by YouTube, Google, or Alphabet. It is an independent tool. AI-generated text can be wrong or incomplete; treat summaries and answers as one input among many when deciding what to trust or act on.
 
-## Acknowledgments
+## Support
 
-- Google Gemini API for AI capabilities
-- YouTube for the amazing platform
-- Chrome Extensions team for the framework
-- TED Talks for demo videos
+If something breaks, please [open an issue](https://github.com/rajat85/youtube-ai-summarizer/issues) with:
+
+- Chrome version  
+- Extension version from `manifest.json`  
+- Example watch URL (if shareable)  
+- Any errors from the page console or the extension service worker console  
 
 ---
 
-**⭐ Star this repo if you find it useful!**
+Made to make long videos easier to skim and discuss.
